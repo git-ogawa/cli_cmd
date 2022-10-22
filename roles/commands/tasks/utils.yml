@@ -1,0 +1,94 @@
+---
+- name: Apt update
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+  when: package_manager == "apt"
+
+- name: Install packages
+  ansible.builtin.package:
+    name:
+      - htop
+      - ranger
+    state: present
+  become: true
+
+- name: Install utils with dnf
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: present
+    disable_gpg_check: true
+  loop:
+    - "https://github.com/muesli/duf/releases/download/v{{ duf_version }}/duf_{{ duf_version }}_linux_amd64.rpm"
+  become: true
+  when: package_manager == "dnf"
+
+- name: Install utils with apt
+  when: package_manager == "apt"
+  block:
+    - name: Install packages with apt
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      become: true
+      loop:
+        - bat
+        - fd-find
+
+    - name: Install packages from github
+      ansible.builtin.apt:
+        deb: "{{ item }}"
+        state: present
+      become: true
+      loop:
+        - "https://github.com/muesli/duf/releases/download/v{{ duf_version }}/duf_{{ duf_version }}_linux_amd64.deb"
+
+- name: Install bat
+  when: package_manager == "dnf"
+  block:
+    - name: Download bat
+      ansible.builtin.unarchive:
+        src: "https://github.com/sharkdp/bat/releases/download/v{{ bat_version }}/bat-v{{ bat_version }}-x86_64-unknown-linux-gnu.tar.gz"
+        dest: /tmp/
+        remote_src: true
+
+    - name: Copy /usr/local/bin/bat
+      ansible.builtin.copy:
+        src: "/tmp/bat-v{{ bat_version }}-x86_64-unknown-linux-gnu/bat"
+        dest: /usr/local/bin/bat
+        mode: "0755"
+        remote_src: true
+      become: true
+
+- name: Install fd
+  when: package_manager == "dnf"
+  block:
+    - name: Download fd
+      ansible.builtin.unarchive:
+        src: https://github.com/sharkdp/fd/releases/download/v{{ fd_version }}/fd-v{{ fd_version }}-x86_64-unknown-linux-gnu.tar.gz
+        dest: /tmp/
+        remote_src: true
+
+    - name: Copy /usr/local/bin/fd
+      ansible.builtin.copy:
+        src: "/tmp/fd-v{{ fd_version }}-x86_64-unknown-linux-gnu/fd"
+        dest: /usr/local/bin/fd
+        mode: "0755"
+        remote_src: true
+      become: true
+
+- name: Install gdu
+  block:
+    - name: Download gdu
+      ansible.builtin.unarchive:
+        src: https://github.com/dundee/gdu/releases/latest/download/gdu_linux_amd64.tgz
+        dest: /tmp/
+        remote_src: true
+
+    - name: Copy /usr/bin/gdu
+      ansible.builtin.copy:
+        src: /tmp/gdu_linux_amd64
+        dest: /usr/local/bin/gdu
+        mode: "0755"
+        remote_src: true
+      become: true
